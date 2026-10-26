@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- net48 vem com todo Windows 10/11: o exe roda sem instalar nada. Sem pacotes NuGet em runtime,
+       para continuar sendo um arquivo só. -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ApplicationIcon>app.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- Nome do programa para o usuário. O código continua no namespace ValCfgSync. -->
+    <AssemblyName>VALORANT CFG</AssemblyName>
+    <AssemblyTitle>VALORANT CFG</AssemblyTitle>
+    <Product>VALORANT CFG</Product>
+    <Version>2.0.0</Version>
+    <DebugType>none</DebugType>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="System.Web.Extensions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Logo dentro do exe: o dono distribui só o exe para os colegas. -->
+    <EmbeddedResource Include="brand.png" LogicalName="brand.png" />
+    <EmbeddedResource Include="logo.png" LogicalName="logo.png" />
+  </ItemGroup>
+
+</Project>

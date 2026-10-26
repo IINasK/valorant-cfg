@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Autoteste sem framework de teste: um console que roda asserts e sai com código 1 se algo falhar. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\src\ValCfgSync.csproj" />
+    <Reference Include="System.Web.Extensions" />
+  </ItemGroup>
+
+</Project>
