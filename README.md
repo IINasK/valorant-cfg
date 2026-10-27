@@ -67,6 +67,23 @@ executável), **VALORANT CFG ligado**, **Iniciar com o Windows** e a pasta de da
 Fica desligado até você confirmar uma cfg ou ligar a chave de novo. Para remover tudo: desligue, desligue
 **Iniciar com o Windows** no ☰ e apague o exe.
 
+## Aba Miras
+
+Guarda códigos de mira para você colar no VALORANT. O app **não mexe na mira do jogo**: ele mostra como a mira
+fica e copia o código.
+
+- **Criar:** digite o nome em **Nova mira** e aperte Enter ou clique na engrenagem. No campo que abrir,
+  cole o código exportado do VALORANT e clique em **Salvar** (ou Enter). A engrenagem permite editar o código depois.
+- **Usar no jogo:** clique uma vez no nome e depois no botão vermelho de **copiar** (duas folhas) à esquerda.
+  No VALORANT: Configurações → Mira → importar código de perfil → Ctrl+V.
+- **Prévia:** dois quadrados mostram **PRIMÁRIA** e **LUNETA** ao mesmo tempo, sobre um cenário de Ascent.
+  A mira normal usa pixels de 1080p e tem tamanho fixo; a luneta é uma aproximação.
+  A mira de ADS segue preservada no código, mas não aparece na prévia.
+- Cenário de Ascent: imagem da Riot Games, disponível na [página oficial de mapas](https://playvalorant.com/en-us/maps/),
+  embutida no executável para funcionar sem internet.
+- **Arquivos locais:** clique no ícone de pasta ao lado do ☰ ou pressione **Ctrl+Shift+O**, em qualquer aba,
+  para abrir a pasta de dados. As CFGs ficam em `profiles` e as miras em `crosshairs.json`.
+
 ## Importante
 
 - Use com **contas suas**. Jogar na conta de outra pessoa viola os termos da Riot, com ou sem esta

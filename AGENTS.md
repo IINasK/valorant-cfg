@@ -96,7 +96,7 @@ UI e mensagens em pt-BR. Este arquivo guarda só o que **não dá para deduzir l
    - Ao fechar, restaura; ao reabrir, o jogo é detectado em até 2s e a cfg chega a tempo.
    - Atualizar `Late`/`Profile` num pending existente é permitido; tocar em `Cloud`/`Ini` não.
 
-`tests/` cobre esses pontos com um Riot Client falso (67 casos). Mudou `Core.cs`? Rode `build.cmd`.
+`tests/` cobre esses pontos com um Riot Client falso (84 casos). Mudou `Core.cs`? Rode `build.cmd`.
 
 ## Interface (desenho do dono, 25/10/2026)
 
@@ -187,6 +187,45 @@ UI e mensagens em pt-BR. Este arquivo guarda só o que **não dá para deduzir l
   - Ícone novo: use um desses dois caminhos, com o mesmo tamanho (36×34) e o mesmo traço.
 - `AutoScaleMode.None` + `S()`: as linhas são recriadas em tempo de execução e o autoescala do WinForms
   não as alcançaria, então todo tamanho em pixel passa por `S()`.
+- **Abas CFGS / MIRAS** no cabeçalho (entre o título e o ☰), texto em `UiBold` (a fonte VALORANT continua só
+  no "CFG" e no "EM USO"), sublinhado vermelho que desliza. Clicar numa aba fecha a página do ☰. Janela
+  520×520.
+
+## Aba Miras (`Crosshair.cs` + `MainForm.Crosshairs.cs`)
+
+- **Não injeta nada no jogo** (pedido do dono): guarda códigos de perfil de mira, mostra a mira e copia o
+  código para o usuário colar no VALORANT (Configurações → Mira → importar código de perfil). Não use a nuvem
+  nem a memória do jogo para isso.
+- Formato do código, sem documentação oficial (engenharia reversa da comunidade; referência:
+  github.com/spartytech/Crosshair-Bridge, `src/lib/valorantCode.ts` e `defaults.ts`):
+  - começa com número + ";" e segue em pares chave;valor. `P`, `A` e `S` abrem as seções primária, ADS e
+    luneta; antes delas é geral. O jogo **só escreve o que difere do padrão**: chave ausente = padrão.
+  - primária: `c` cor (0 branco, 1 verde, 2 verde-amarelado, 3 amarelo-esverdeado, 4 amarelo, 5 ciano,
+    6 rosa, 7 vermelho, 8 = `u` RRGGBB[AA]); `h` contorno (1), `t` espessura (1), `o` opacidade (0.5); `d`
+    ponto (0), `z` tamanho (2), `a` opacidade (1); linhas internas `0b` (1), `0t` (2), `0l` (6), `0g` liga o
+    vertical separado `0v`, `0o` offset (3), `0a` (0.8); externas `1b` (1), `1t` (2), `1l` (2), `1o` (10),
+    `1a` (0.35). Os erros de movimento/disparo (`0m`, `0f`...) existem mas não são desenhados.
+  - luneta (`S`, armas de longo alcance; chaves tiradas de códigos reais de pros): `d` mostra o ponto (1), `c`
+    cor (7 = vermelho), `t` cor própria quando `c` = 8 (na primária é `u`), `s` espessura (1, decimal), `o`
+    opacidade (0.75). A seção `A` (ADS) não é desenhada.
+- **Guarda o código como veio** (só sem espaços nas pontas) e exporta exatamente ele: chaves que o app não
+  entende (ADS, luneta, futuras) não se perdem.
+- Prévia: **dois quadrados simultâneos, PRIMÁRIA / LUNETA**, sobre um cenário de Ascent da página oficial
+  de mapas da Riot (`src/crosshair-scene.jpg`, embutido no exe). Nome do perfil fica abaixo.
+  Mira em **pixels do jogo em 1080p** (não passa por `S()`), tamanho fixo, sem zoom por clique.
+  Na luneta, o diâmetro do ponto (4 px por unidade de espessura) e o desenho da luneta são
+  estimativas. A linha começa a `offset` px do centro; espessura ímpar põe o centro no meio de um
+  pixel; contorno = borda preta em volta de cada parte (sem escurecer por baixo de linha translúcida).
+  É simulação: não promete ser idêntica ao jogo.
+- Salvas em `crosshairs.json` na pasta de dados (`CrosshairStore`). **Primeiro o nome**, em "Nova mira" +
+  Enter ou engrenagem (`Create`); depois o campo da engrenagem recebe o código (`Update`). Perfis sem código
+  persistem; os códigos antigos continuam intactos. Nome vazio/repetido e código inválido são recusados no cartão.
+- Um clique no nome atualiza as duas prévias e revela um quadrado vermelho à esquerda com **duas folhas**;
+  clicar nele copia o código. Reutiliza `CheckButton` / `ToggleReveal` / `CancelReveal` / `Animate` das CFGs,
+  com modo de copiar; não ativa cfg nem watcher. Clicar fora recolhe. A engrenagem abre o editor de código
+  com prévia ao digitar, Salvar/Enter para gravar, X/Esc/clique fora para cancelar (`tools` compartilhado).
+- **Atalho para os dados (CFGS e MIRAS):** ícone de pasta E8B7 no cabeçalho, ao lado do ☰, e **Ctrl+Shift+O**.
+  Ambos e o Abrir do ☰ usam `OpenDataFolder()` com `vcs.DataDir` (respeita a pasta legada).
 
 ## Distribuição
 

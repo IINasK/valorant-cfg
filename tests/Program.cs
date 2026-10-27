@@ -4,6 +4,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using ValCfgSync;
 
 var tmp = Path.Combine(Path.GetTempPath(), "vcs-test-" + Guid.NewGuid());
@@ -18,6 +19,7 @@ void Assert(bool cond, string name)
     Console.ResetColor();
     if (!cond) failed++;
 }
+bool Throws(Action a) { try { a(); return false; } catch (VcsException) { return true; } }
 string IniPath(string who) => Path.Combine(tmp, "config", who + "-br", @"WindowsClient\GameUserSettings.ini");
 void WriteIni(string who, string text) { Directory.CreateDirectory(Path.GetDirectoryName(IniPath(who))!); File.WriteAllText(IniPath(who), text); }
 string Ini(string who) => File.ReadAllText(IniPath(who));
@@ -256,7 +258,47 @@ try
 
     // formato do serviço de preferências: deflate cru + base64, com acentos (nome de mira "Cruz é")
     var doc = "{\"stringSettings\":[{\"value\":\"Cruz é\"}]}";
-    Assert(RiotClient.Inflate(RiotClient.Deflate(doc)) == doc, "deflate/inflate do serviço é ida e volta (UTF-8)");}
+    Assert(RiotClient.Inflate(RiotClient.Deflate(doc)) == doc, "deflate/inflate do serviço é ida e volta (UTF-8)");
+
+    // --- miras: código de perfil do VALORANT ---
+    var def = Crosshair.Parse("0");
+    Assert(def.ColorIndex == 0 && def.Rgb == (255, 255, 255) && def.Outlines && def.OutlineOpacity == 0.5 && !def.Dot
+           && def.Inner.Show && def.Inner.Length == 6 && def.Inner.Offset == 3 && def.Inner.Opacity == 0.8
+           && def.Outer.Show && def.Outer.Offset == 10 && def.Outer.Opacity == 0.35, "mira: código vazio = padrões do jogo");
+    var tenz = Crosshair.Parse(" 0;s;1;P;c;5;h;0;m;1;0l;4;0o;2;0a;1;0f;0;1b;0 ");
+    Assert(tenz.Rgb == (0, 255, 255) && !tenz.Outlines && tenz.Inner.Length == 4 && tenz.Inner.VLength == 4 && tenz.Inner.Offset == 2
+           && tenz.Inner.Opacity == 1 && tenz.Inner.Thickness == 2 && !tenz.Outer.Show, "mira: lê a primária (TenZ)");
+    Assert(tenz.Code == "0;s;1;P;c;5;h;0;m;1;0l;4;0o;2;0a;1;0f;0;1b;0", "mira: guarda o código sem espaços nas pontas");
+    var only = Crosshair.Parse("0;P;0l;3;A;0l;9;S;c;7");
+    Assert(only.Inner.Length == 3 && only.ColorIndex == 0, "mira: ADS e luneta não mudam a primária");
+    var custom = Crosshair.Parse("0;P;c;8;u;FF8000FF;d;1;z;3;0g;1;0v;9");
+    Assert(custom.Rgb == (255, 128, 0) && custom.Dot && custom.DotThickness == 3 && custom.Inner.VLength == 9 && custom.Inner.Length == 6,
+           "mira: cor personalizada, ponto central e vertical separado");
+    Assert(def.ScopeDot && def.ScopeRgb == (255, 0, 0) && def.ScopeThickness == 1 && def.ScopeOpacity == 0.75, "luneta: padrão é ponto vermelho, 1, 0.75");
+    var askia = Crosshair.Parse("0;s;1;P;u;000000FF;o;1;d;1;0b;0;1b;0;S;c;5;s;1.201;o;1");
+    Assert(askia.ScopeRgb == (0, 255, 255) && askia.ScopeThickness == 1.201 && askia.ScopeOpacity == 1 && askia.Dot && !askia.Inner.Show,
+           "luneta: lê a seção S (Askia) sem confundir com a primária");
+    var scopeCustom = Crosshair.Parse("0;P;c;1;S;c;8;t;FFAA00FF;d;0");
+    Assert(scopeCustom.ScopeRgb == (255, 170, 0) && !scopeCustom.ScopeDot && scopeCustom.Rgb == (0, 255, 0), "luneta: cor própria em t e ponto desligado");
+    foreach (var junk in new[] { "", "oi", "P;c;5", "0;P;c;abc", "0;P;0l;-1", "0;S;s;x" })
+        Assert(Throws(() => Crosshair.Parse(junk)), $"mira: rejeita \"{junk}\"");
+    var store = vcs.Crosshairs;
+    Assert(store.List().Count == 0, "miras: começa vazio");
+    Assert(store.Add(tenz.Code) == "Mira 1" && store.Add("0;P;c;7", "Vermelha") == "Vermelha" && store.Add("0") == "Mira 3", "miras: nomes automáticos e dados");
+    Assert(Throws(() => store.Add("0", "vermelha")) && Throws(() => store.Add("lixo")), "miras: rejeita nome repetido e código inválido");
+    store.Delete("Vermelha");
+    var kept = store.List();
+    Assert(kept.Count == 2 && kept[0] == ("Mira 1", tenz.Code) && kept[1].Name == "Mira 3", "miras: excluir mantém as outras, na ordem");
+    Assert(store.Create("  NasK  ") == "NasK" && store.List().Last() == ("NasK", ""), "miras: cria o perfil pelo nome antes do código");
+    Assert(new CrosshairStore(Path.Combine(vcs.DataDir, "crosshairs.json")).List().Last() == ("NasK", ""), "miras: perfil sem código sobrevive à reabertura");
+    Assert(Throws(() => store.Create(" ")) && Throws(() => store.Create("nask")), "miras: nome vazio e duplicado recusados mesmo sem código");
+    store.Update("NasK", "  " + tenz.Code + "  ");
+    Assert(store.List().Last() == ("NasK", tenz.Code) && store.List().First() == kept[0], "miras: salva código no perfil nomeado e preserva as outras");
+    Assert(Throws(() => store.Update("NasK", "lixo")) && store.List().Last().Code == tenz.Code, "miras: código inválido preserva o código salvo");
+    Assert(Throws(() => store.Update("Não existe", "0")) && store.List().Count == 3, "miras: editar perfil ausente não cria nem apaga perfis");
+    store.Update("NasK", "0;P;c;1;A;0l;9;S;c;8;t;FFAA00FF;d;0");
+    Assert(store.List().Last().Code == "0;P;c;1;A;0l;9;S;c;8;t;FFAA00FF;d;0", "miras: editar preserva o código completo, incluindo ADS e luneta");
+}
 finally
 {
     try { Directory.Delete(tmp, true); } catch { }

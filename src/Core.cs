@@ -59,6 +59,8 @@ public sealed class Vcs
 
     public event Action<string>? Notify;   // aviso ao usuário (balão da bandeja) quando aplica ou restaura
 
+    public CrosshairStore Crosshairs => new(Path.Combine(DataDir, "crosshairs.json"));   // aba Miras
+
     public Vcs(IRiot riot, string? dataDir = null, string? gameConfigDir = null)
     {
         var local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);

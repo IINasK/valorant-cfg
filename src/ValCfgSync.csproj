@@ -27,6 +27,7 @@
     <!-- Logo dentro do exe: o dono distribui só o exe para os colegas. -->
     <EmbeddedResource Include="brand.png" LogicalName="brand.png" />
     <EmbeddedResource Include="logo.png" LogicalName="logo.png" />
+    <EmbeddedResource Include="crosshair-scene.jpg" LogicalName="crosshair-scene.jpg" />
   </ItemGroup>
 
 </Project>

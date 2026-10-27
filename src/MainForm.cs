@@ -12,7 +12,7 @@ using System.Windows.Forms;
 
 namespace ValCfgSync;
 
-public sealed class MainForm : Form, IMessageFilter
+public sealed partial class MainForm : Form, IMessageFilter
 {
     // Clicar em qualquer lugar do app fora do ✓ aberto (e do nome dele) recolhe o ✓; fora do menu da ⚙️, recolhe
     // o menu. Clicar no próprio nome/engrenagem já recolhe pelo Toggle; em outro, recolhe aqui e o clique abre o dele.
@@ -30,7 +30,7 @@ public sealed class MainForm : Form, IMessageFilter
                                    Disabled = Color.FromArgb(175, 180, 188);
     const string IconFont = "Segoe MDL2 Assets";   // vem com Windows 10/11
     const string GlyphMenu = "", GlyphDelete = "", GlyphCancel = "\uE711", GlyphGear = "\uE713";
-    const int RowH = 52, ListW = 472, ListH = 260;   // lista de 24 a 496: margens iguais dos dois lados
+    const int RowH = 52, ListW = 472, ListH = 336;   // lista de 24 a 496: margens iguais dos dois lados
 
     // Fonte do VALORANT (a fan font "VALORANT", se estiver instalada no Windows): SÓ no título "VALORANT CFG"
     // e no "EM USO" (decisão do dono). Ela só tem maiúsculas, daí o Caps(). Não é embutida no exe (licença de
@@ -68,7 +68,7 @@ public sealed class MainForm : Form, IMessageFilter
     // Escolher cfg em dois passos (desenho do dono): clicar no nome revela o check; clicar no check confirma.
     const float SmallName = 13f, BigName = 15f;
     const int CheckW = 32, NameShift = 40;
-    (string Name, Panel Check, Label Label)? revealed;
+    (string Name, Panel Check, Label Label, bool Grow)? revealed;
     int revealedAt;   // Environment.TickCount de quando o ✓ abriu (2º clique rápido no ✓ = clique duplo)
     (Control[] Inside, Action Close)? tools;   // menu da ⚙️ aberto: Inside[0] é a engrenagem
 
@@ -81,15 +81,19 @@ public sealed class MainForm : Form, IMessageFilter
         Font = new Font(Ui, 9.5f);
         BackColor = Color.White;
         AutoScaleMode = AutoScaleMode.None;
-        ClientSize = new Size(S(520), S(444));
+        ClientSize = new Size(S(520), S(520));
         FormBorderStyle = FormBorderStyle.FixedSingle;
         MaximizeBox = false;
         StartPosition = FormStartPosition.CenterScreen;
 
         Add(AppLogo(22, 21, 30));   // 30 de altura, centrado com o título (y 36)
-        Add(BrandTitle(54, 16, 380, 40));
+        Add(BrandTitle(54, 16, 236, 40));   // estreito: as abas CFGS/MIRAS vêm logo depois
+        BuildTabs();
+        var folder = Add(IconLabel("\uE8B7", 426, 18, "Abrir pasta das CFGs e miras (Ctrl+Shift+O)"));
+        folder.AccessibleName = "Abrir pasta das CFGs e miras";
+        folder.Click += (_, _) => OpenDataFolder();
         menuButton = Add(IconLabel(GlyphMenu, 466, 18, "Configurações", 17f));
-        backButton = Add(IconLabel(GlyphCancel, 466, 18, "Voltar para a lista de cfgs"));
+        backButton = Add(IconLabel(GlyphCancel, 466, 18, "Voltar"));
         backButton.Visible = false;
         menuButton.Click += (_, _) => ShowSettings(true);
         backButton.Click += (_, _) => ShowSettings(false);
@@ -112,7 +116,8 @@ public sealed class MainForm : Form, IMessageFilter
         scroll = Add(new ThinScrollBar { Bounds = R(503, 172, 10, ListH - 8) });
         scroll.ValueChanged += () => rows.Top = -scroll.Value;
 
-        page = Add(new SmoothPanel { Bounds = R(0, 164, 520, 280), Visible = false });
+        BuildCrosshairPage();   // aba Miras (MainForm.Crosshairs.cs); SetTab/ShowSettings ajustam quem fica por cima
+        page = Add(new SmoothPanel { Bounds = R(0, 164, 520, 356), Visible = false });
         var game = SettingsRow(0, "Jogo", "Executável do VALORANT que o app vigia.");
         gamePath = game.Detail;
         var browse = RowButton("Procurar...", "Escolher o VALORANT.exe", ghost: true);
@@ -131,7 +136,7 @@ public sealed class MainForm : Form, IMessageFilter
         var data = SettingsRow(3, "Pasta de dados", vcs.DataDir);
         dataPath = data.Detail;
         var open = RowButton("Abrir", "Abrir a pasta no Explorer", ghost: true);
-        open.Click += (_, _) => { Directory.CreateDirectory(vcs.DataDir); Process.Start("explorer.exe", $"\"{vcs.DataDir}\"")?.Dispose(); };
+        open.Click += (_, _) => OpenDataFolder();
         PlaceRight(data, open);
 
         if (vcs.GameExe == "" && Game.FindExe() is { } found) vcs.GameExe = found;   // primeira vez: detecta sozinho
@@ -521,16 +526,21 @@ public sealed class MainForm : Form, IMessageFilter
 
     // Quadrado vermelho com check branco (ou X, na cfg em uso). Começa com largura 0; o desenho acompanha a
     // borda direita, então desliza para dentro junto com o quadrado.
-    Panel CheckButton(bool remove)
+    Panel CheckButton(bool remove, bool copy = false)
     {
         var p = new Panel { Bounds = R(0, 8, 0, 36), BackColor = Accent, Visible = false, Cursor = Cursors.Hand };
-        tips.SetToolTip(p, remove ? "Tirar esta cfg de uso: o VALORANT abre com a cfg original de cada conta" : "Usar esta cfg");
+        tips.SetToolTip(p, copy ? "Copiar o código da mira" : remove ? "Tirar esta cfg de uso: o VALORANT abre com a cfg original de cada conta" : "Usar esta cfg");
         p.Paint += (_, e) =>
         {
             e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
             float u = S(1), cx = p.Width - S(CheckW) / 2f, cy = p.Height / 2f;
             using var pen = new Pen(Color.White, 2.4f * u) { StartCap = System.Drawing.Drawing2D.LineCap.Round, EndCap = System.Drawing.Drawing2D.LineCap.Round, LineJoin = System.Drawing.Drawing2D.LineJoin.Round };
-            if (remove)
+            if (copy)
+            {
+                e.Graphics.DrawLines(pen, new[] { new PointF(cx - 5 * u, cy + 3 * u), new PointF(cx - 8 * u, cy + 3 * u), new PointF(cx - 8 * u, cy - 7 * u), new PointF(cx + 2 * u, cy - 7 * u), new PointF(cx + 2 * u, cy - 4 * u) });
+                e.Graphics.DrawRectangle(pen, cx - 4 * u, cy - 3 * u, 11 * u, 11 * u);
+            }
+            else if (remove)
             {
                 e.Graphics.DrawLine(pen, cx - 5 * u, cy - 5 * u, cx + 5 * u, cy + 5 * u);
                 e.Graphics.DrawLine(pen, cx - 5 * u, cy + 5 * u, cx + 5 * u, cy - 5 * u);
@@ -566,14 +576,14 @@ public sealed class MainForm : Form, IMessageFilter
         label.Left = S(4) + (int)(S(NameShift) * e);
     }
 
-    void ToggleReveal(string name, Panel check, Label label)
+    void ToggleReveal(string name, Panel check, Label label, bool crosshair = false)
     {
-        var same = revealed?.Name == name;
+        var same = revealed?.Check == check;
         CancelReveal(animated: true);
         if (same) return;   // clicar de novo no mesmo nome recolhe
-        revealed = (name, check, label);
+        var grow = crosshair || name != vcs.ActiveProfile;
+        revealed = (name, check, label, grow);
         revealedAt = Environment.TickCount;
-        var grow = name != vcs.ActiveProfile;   // a cfg em uso já está com a fonte grande
         Animate(label, e =>
         {
             if (revealed?.Check != check) return;   // recolhido no meio (ex.: clique duplo): não reabre
@@ -587,7 +597,7 @@ public sealed class MainForm : Form, IMessageFilter
     {
         if (revealed is not { } r) return;
         revealed = null;
-        var shrink = r.Name != vcs.ActiveProfile;
+        var shrink = r.Grow;
         void Step(float e)
         {
             PlaceReveal(r.Check, r.Label, 1 - e);
@@ -825,6 +835,19 @@ public sealed class MainForm : Form, IMessageFilter
         autoSwitch.On = Autostart.IsEnabled();
         tips.SetToolTip(gamePath, gamePath.Text);
         tips.SetToolTip(dataPath, dataPath.Text);
+    }
+
+    void OpenDataFolder()
+    {
+        Directory.CreateDirectory(vcs.DataDir);
+        Process.Start("explorer.exe", $"\"{vcs.DataDir}\"")?.Dispose();
+    }
+
+    protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+    {
+        if (keyData != (Keys.Control | Keys.Shift | Keys.O)) return base.ProcessCmdKey(ref msg, keyData);
+        OpenDataFolder();
+        return true;
     }
 
     void SetGameExe(string? exe)
