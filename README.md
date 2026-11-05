@@ -1,5 +1,9 @@
 # VALORANT CFG
 
+> **Em desenvolvimento - verificacao pendente.** Este projeto ainda precisa ser verificado. O status atual e' **aguardando resposta da Riot Games para validar o seu uso**. Nao ha aprovacao ou validacao da Riot Games. A documentacao abaixo descreve a implementacao existente; ela nao comprova compatibilidade com os termos do jogo.
+>
+> **Development status:** experimental; awaiting a response from Riot Games regarding permitted use. Not approved or validated by Riot Games.
+
 Usa a **sua** cfg do VALORANT (mira, sensibilidade, teclas, gráficos) em qualquer conta sua neste PC.
 Quando o jogo fecha, a cfg original daquela conta volta.
 
